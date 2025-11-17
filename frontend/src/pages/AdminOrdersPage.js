@@ -24,22 +24,27 @@ const statusOptions = ['pending', 'preparing', 'delivered', 'completed', 'cancel
 const AdminOrdersPage = () => {
   const { token } = useAuth();
   const [orders, setOrders] = useState([]);
+  const [workers, setWorkers] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // load all orders
+  // load all orders + workers
   useEffect(() => {
-    const fetchOrders = async () => {
+    const fetchData = async () => {
       setLoading(true);
       try {
-        const data = await apiFetch('/api/orders', {}, token);
-        setOrders(data);
+        const [ordersData, workersData] = await Promise.all([
+          apiFetch('/api/orders', {}, token),
+          apiFetch('/api/workers', {}, token),
+        ]);
+        setOrders(ordersData);
+        setWorkers(workersData);
       } catch (err) {
-        console.error('Failed to fetch orders', err);
+        console.error('Failed to fetch admin orders/workers', err);
       } finally {
         setLoading(false);
       }
     };
-    fetchOrders();
+    fetchData();
   }, [token]);
 
   // change order status
@@ -60,7 +65,32 @@ const AdminOrdersPage = () => {
       );
     } catch (err) {
       console.error('Failed to update order status', err);
-      // if you want, you can show an error message here
+      // Optional: show toast/error
+    }
+  };
+
+  // assign / unassign worker
+  const handleAssignWorker = async (orderId, workerId) => {
+    try {
+      const body =
+        workerId && workerId !== ''
+          ? { workerId }
+          : { workerId: null }; // allow unassign
+
+      const updated = await apiFetch(
+        `/api/orders/${orderId}/assign`,
+        {
+          method: 'PATCH',
+          body: JSON.stringify(body),
+        },
+        token
+      );
+
+      setOrders((prev) =>
+        prev.map((o) => (o._id === orderId ? updated : o))
+      );
+    } catch (err) {
+      console.error('Failed to assign worker to order', err);
     }
   };
 
@@ -101,13 +131,16 @@ const AdminOrdersPage = () => {
                     📞 {order.deliveryDetails?.phone || 'No phone on file'}
                   </p>
                   <p className="text-[11px] text-slate-500">
+                    📍 {order.deliveryDetails?.address || 'No address on file'}
+                  </p>
+                  <p className="text-[11px] text-slate-500">
                     {order.createdAt
                       ? new Date(order.createdAt).toLocaleString()
                       : ''}
                   </p>
                 </div>
 
-                {/* status + controls */}
+                {/* status + controls + worker assignment */}
                 <div className="flex flex-col items-end gap-2">
                   {/* current status badge */}
                   <span
@@ -131,12 +164,37 @@ const AdminOrdersPage = () => {
                     ))}
                   </select>
 
+                  {/* order type + total */}
                   <span className="text-xs text-slate-400">
                     {order.type === 'pickup' ? 'Pickup' : 'Delivery'}
                   </span>
                   <span className="text-sm font-semibold">
                     ${order.totalAmount?.toFixed(2) ?? '0.00'}
                   </span>
+
+                  {/* worker assignment */}
+                  <div className="mt-1 text-right">
+                    <p className="text-[11px] text-slate-400 mb-1">
+                      Assigned to:{' '}
+                      <span className="text-slate-200">
+                        {order.assignedWorker?.name || 'Unassigned'}
+                      </span>
+                    </p>
+                    <select
+                      value={order.assignedWorker?._id || ''}
+                      onChange={(e) =>
+                        handleAssignWorker(order._id, e.target.value)
+                      }
+                      className="text-[11px] bg-slate-900 border border-slate-700 rounded-full px-2 py-1 text-slate-200 focus:outline-none focus:border-red-500 min-w-[140px]"
+                    >
+                      <option value="">Unassigned</option>
+                      {workers.map((w) => (
+                        <option key={w._id} value={w._id}>
+                          {w.name} ({w.role})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 

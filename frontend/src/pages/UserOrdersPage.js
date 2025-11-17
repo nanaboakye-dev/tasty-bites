@@ -122,6 +122,9 @@ const UserOrdersPage = () => {
                       Notes: {order.deliveryDetails.notes}
                     </p>
                   )}
+                  <p className="text-[11px] text-slate-500 mt-1">
+                      Driver: {order.assignedWorker?.name || 'Unassigned'}
+                  </p>
                   {order.deliveryDetails?.allergies && (
                     <p className="text-[11px] text-amber-300 mt-1">
                       Allergies: {order.deliveryDetails.allergies}

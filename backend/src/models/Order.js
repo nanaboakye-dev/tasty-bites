@@ -30,6 +30,11 @@ const orderSchema = new mongoose.Schema(
       enum: ['pending', 'paid', 'preparing', 'completed', 'cancelled'],
       default: 'pending',
     },
+    assignedWorker: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Worker',
+      default: null,
+    },
     stripeSessionId: { type: String },
   },
   { timestamps: true }
